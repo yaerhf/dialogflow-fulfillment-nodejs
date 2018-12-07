@@ -60,14 +60,11 @@ class Card extends RichResponse {
       this.title = card.title;
       this.text = card.text;
       this.imageUrl = card.imageUrl;
-      if (
-        (!card.buttonText && card.buttonUrl) ||
-        (!card.buttonUrl && card.buttonText)
+      if (Array.isArray(card.buttons) && card.buttons.filter(function(c){ return (c.text.length > 0 && c.postback.length > 0);}).length > 0 )
       ) {
         throw new Error('card button requires both title and link');
       }
-      this.buttonText = card.buttonText;
-      this.buttonUrl = card.buttonUrl;
+      this.buttons = card.buttons;
       if (
         typeof card.platform !== 'undefined' &&
         card.platform !== PLATFORMS.UNSPECIFIED
@@ -150,15 +147,20 @@ class Card extends RichResponse {
    * @param {Object} options.url button link URL
    * @return {Card}
    */
-  setButton(button) {
-    if ((!button.text && button.url) || (!button.url && button.text)) {
-      throw new Error(
-        `card button requires button title and url. \
-\nUsage: setButton({text: \'button text\', url: \'http://yoururlhere.com\'}`
-      );
-    }
-    this.buttonText = button.text;
-    this.buttonUrl = button.url;
+  addButton(button) {
+    if (button.text.length == 0 || button.postback.length == 0))
+      ) {
+        throw new Error('card button requires both title and link');
+      }
+    this.buttons.push(button);
+    return this;
+  }
+  setButton(button, index) {
+    if (button.text.length == 0 || button.postback.length == 0))
+      ) {
+        throw new Error('card button requires both title and link');
+      }
+    this.buttons[index] = button;
     return this;
   }
 
@@ -200,10 +202,13 @@ class Card extends RichResponse {
         response.image.accessibilityText = 'accessibility text';
       }
 
-      if (this.buttonText && this.buttonUrl) {
-        response.buttons = [{openUrlAction: {}}];
-        response.buttons[0].title = this.buttonText;
-        response.buttons[0].openUrlAction.url = this.buttonUrl;
+      if (this.buttons.length > 0) {
+        response.buttons = [];
+        this.buttons.forEach(function(b,i){
+          response.buttons[i] = {openUrlAction: {}};
+          response.buttons[i].title = b.text;
+          response.buttons[i].openUrlAction.url = b.postback;
+        });
       }
     } else {
       response = {type: v1MessageObjectCard};
@@ -212,11 +217,8 @@ class Card extends RichResponse {
       if (this.imageUrl) response.imageUrl = this.imageUrl;
       // this is required in the response even if there are no buttons for some reason
       if (platform === PLATFORMS.SLACK) response.buttons = [];
-      if (this.buttonText && this.buttonUrl) {
-        response.buttons = [];
-        response.buttons[0] = {};
-        response.buttons[0].text = this.buttonText;
-        response.buttons[0].postback = this.buttonUrl;
+      if (this.buttons.length > 0) {
+        response.buttons = this.buttons;
       }
       // response is the same for generic responses without the platform attribute
       // if the platform is not undefined or the platform is not unspecified
@@ -258,24 +260,21 @@ class Card extends RichResponse {
         response.basicCard.image.imageUri = this.imageUrl;
         response.basicCard.image.accessibilityText = 'accessibility text';
       }
-      if (this.buttonText && this.buttonUrl) {
-        response.basicCard.buttons = [{
-          title: this.buttonText,
-          openUriAction: {
-            uri: this.buttonUrl,
-          },
-        }];
+      if (this.buttons.length > 0) {
+        response.basicCard.buttons = [];
+        this.buttons.forEach(function(b,i){
+          response.basicCard.buttons[i] = {openUrlAction: {}};
+          response.basicCard.buttons[i].title = b.text;
+          response.basicCard.buttons[i].openUrlAction.url = b.postback;
+        });
       }
     } else {
       response = {card: {}};
       response.card.title = this.title;
       if (this.text) response.card.subtitle = this.text;
       if (this.imageUrl) response.card.imageUri = this.imageUrl;
-      if (this.buttonText && this.buttonUrl) {
-        response.card.buttons = [];
-        response.card.buttons[0] = {};
-        response.card.buttons[0].text = this.buttonText;
-        response.card.buttons[0].postback = this.buttonUrl;
+      if (this.buttons.length > 0) {
+        response.buttons = this.buttons;
       }
       // response is the same for generic responses without the platform attribute
       // if the platform is not undefined or the platform is not unspecified
